@@ -1,0 +1,8 @@
+{
+  "description": "Metexon ESP32 firmware for Klipper tool board",
+  "firmware_version": "1.3",
+  "firmware_version_full": "1.3 (variant 0)",
+  "format": 1,
+  "size_uncompressed": 1220496,
+  "size_compressed": 885132
+}

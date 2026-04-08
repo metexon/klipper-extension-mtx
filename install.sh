@@ -7,10 +7,16 @@ KLIPPER_SERVICE="klipper"
 EXTENSION_REPO="https://github.com/metexon/klipper-extension-mtx.git"
 EXTENSION_PATH="${HOME}/klipper-extension-mtx"
 KLIPPER_EXTRAS_PATH="${KLIPPER_PATH}/klippy/extras"
+PRINTER_DATA_PATH="${HOME}/printer_data"
 
 MODULES=(
     "metexon_toolboard.py"
     "metexon_fan.py"
+)
+
+FIRMWARE_FILES=(
+    "mtx_esp32_firmware.bin"
+    "mtx_esp32_firmware.json"
 )
 
 
@@ -81,6 +87,25 @@ link_extension() {
 }
 
 
+link_firmware_files() {
+    local firmware_file
+
+    if [ ! -d "${PRINTER_DATA_PATH}" ]; then
+        report_status "Firmware files not linked"
+        echo "Directory not found: ${PRINTER_DATA_PATH}"
+        echo "Create this directory if you want the installer to expose the firmware files there."
+        return
+    fi
+
+    report_status "Linking firmware files into ${PRINTER_DATA_PATH}"
+
+    for firmware_file in "${FIRMWARE_FILES[@]}"; do
+        ln -sf "${ACTIVE_EXTENSION_PATH}/firmware/${firmware_file}" "${PRINTER_DATA_PATH}/${firmware_file}"
+        echo "Linked ${firmware_file}"
+    done
+}
+
+
 restart_klipper() {
     report_status "Restarting ${KLIPPER_SERVICE}"
     sudo systemctl restart "${KLIPPER_SERVICE}"
@@ -108,6 +133,7 @@ main() {
     check_dependencies
     resolve_extension_path
     link_extension
+    link_firmware_files
     restart_klipper
     print_update_manager_instructions
 }
