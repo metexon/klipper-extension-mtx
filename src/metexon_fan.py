@@ -48,9 +48,9 @@ class PrinterFan:
                 raise Exception("mtx_board: %s defined, but no [metexon_toolboard %s] section found." %
                                 (self.mtx_board_name, self.mtx_board_name))
         
-        # add  pin: mtxCAN:PIN_UNUSED_7 to config to avoid error
+        # add  PIN_UNUSED_7==gpio15 to config to avoid error
         mcu_name = board.mcu_name
-        config_modified = ConfigWrapperWrapper(config, {'pin': mcu_name + ':PIN_UNUSED_7'})
+        config_modified = ConfigWrapperWrapper(config, {'pin': mcu_name + ':gpio15'})
         
         # create standard fan object
         self.fan = fan.Fan(config_modified)
