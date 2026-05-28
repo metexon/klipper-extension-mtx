@@ -69,3 +69,20 @@ Note: This is the internal control firmware, not the Klipper firmware that also 
 ## Klipper configuration
 
 See [`example_printer.cfg`](example_printer.cfg) for an example of how to use it in your Klipper configuration.
+
+## Firmware Changes:
+
+### Firmware 1.6
+
+New: readout of motor temperature sensor (on the outer surface of the stepper motor)
+
+* Reported on mtx temperature sensor channel "motor"
+* Example config:
+```
+[temperature_sensor Extruder_Motor]
+sensor_type: mtx                 # use mtx temperature sensor type
+mtx_board: mtx6                  # toolboard ID
+mtx_sensor_channel: motor        # motor -> temperature at extruder motor
+```
+
+

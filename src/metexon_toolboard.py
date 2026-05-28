@@ -61,7 +61,7 @@ MTX_REGISTER_TEMP_BODY = 0x0A           # read-only, body temperature in 0.01°C
 MTX_REGISTER_TEMP_BODY_SETPOINT = 0x0B  # reserved for future use
 MTX_REGISTER_TEMP_BODY_PWM = 0x0C       # reserved for future use
 MTX_REGISTER_TEMP_ESP32 = 0x0D          # read-only, ESP32 temperature in 0.01°C
-MTX_REGISTER_TEMP_MOTOR = 0x0E          # reserved for future use
+MTX_REGISTER_TEMP_MOTOR = 0x0E          # read-only, motor temperature in 0.01°C
 MTX_REGISTER_FAN1_PWM = 0x0F            # read-write, Fan 1 PWM 0-255
 MTX_REGISTER_FAN2_PWM = 0x10            # read-write, Fan 2 PWM 0-255
 MTX_REGISTER_FAN1_RPM = 0x11            # read-only, Fan 1 RPM
@@ -82,7 +82,8 @@ MTX_CHANNEL_TO_TEMP_PROPERTY_GET = {
     't1': 'temperature1',
     't2': 'temperature2',
     'body': 'temperature_body',
-    'esp32': 'temperature_esp32'
+    'esp32': 'temperature_esp32',
+    'motor': 'temperature_motor',
 }
 
 MTX_CHANNEL_TO_TEMP_PROPERTY_SET = {
@@ -141,6 +142,7 @@ class MetexonToolboard:
         self.pwm2 = 0.
         self.temperature_body = 0.
         self.temperature_esp32 = 0.
+        self.temperature_motor = 0.
         self.fan_speed = 0.
         self.fan_rpm = 0.
         self.fan_body_speed = 0.
@@ -232,6 +234,7 @@ class MetexonToolboard:
             self.pwm2 = min(1.0, max(0.0, registers[MTX_REGISTER_TEMP2_PWM] / 255.0))
             self.temperature_body = registers[MTX_REGISTER_TEMP_BODY] / 100.0
             self.temperature_esp32 = registers[MTX_REGISTER_TEMP_ESP32] / 100.0
+            self.temperature_motor = registers[MTX_REGISTER_TEMP_MOTOR] / 100.0
             self.fan_body_speed = registers[MTX_REGISTER_FAN1_PWM] / 255.0
             self.fan_body_rpm = registers[MTX_REGISTER_FAN1_RPM]
             self.fan_speed = registers[MTX_REGISTER_FAN2_PWM] / 255.0
@@ -466,6 +469,7 @@ class MetexonToolboard:
             'pwm2': self.pwm2,
             'temperature_body': self.temperature_body,
             'temperature_esp32': self.temperature_esp32,
+            'temperature_motor': self.temperature_motor,
             'fan_speed': self.fan_speed,
             'fan_rpm': self.fan_rpm,
             'fan_body_speed': self.fan_body_speed,
