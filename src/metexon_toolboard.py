@@ -1156,36 +1156,6 @@ class MtxStreamSampler:
         return None
 
 
-class DummySensor:
-    def __init__(self, config):
-        self.channel = config.get('mtx_sensor_channel', 't1')
-        self.mtx_board_name = config.get('mtx_board', 'default')
-        self.sample_time = config.getint('sample_time', 1, minval=.5)
-
-        self.printer = config.get_printer()
-        self.reactor = self.printer.get_reactor()
-        self.sample_timer = self.reactor.register_timer(self._sample_mtx_proxy)
-        self.printer.register_event_handler("klippy:ready", self._handle_connect)
-
-    def _handle_connect(self):
-        self.reactor.update_timer(self.sample_timer, self.reactor.NOW)
-
-    def _sample_mtx_proxy(self, eventtime):
-        measured_time = self.reactor.monotonic()
-        temp = 90.0
-        self.temperature_callback(measured_time, temp)
-        return measured_time + self.sample_time
-
-    def setup_callback(self, temperature_callback):
-        self.temperature_callback = temperature_callback
-
-    def get_report_time_delta(self):
-        return 0.3
-
-    def setup_minmax(self, min_temp, max_temp):
-        pass
-
-
 class MTXSensor:
     """
     MTX temperature sensor class, used as sensor_type: mtx in [temperature_sensor] section
@@ -1260,7 +1230,9 @@ class MTXSensor:
             self.pwm = pwm
 
             # this reports the temperature to Klipper
-            self._callback(measured_time, temperature)
+            # Heater callbacks expect an MCU print-time timestamp.
+            read_time = mtx.mcu.estimated_print_time(measured_time)
+            self._callback(read_time, temperature)
         # else do not update yet
         return measured_time + self.report_time
 
@@ -1347,6 +1319,5 @@ def on_load(config, board_name):
     mtxlog("registering MTX as temperature sensor")
     pheaters = config.get_printer().load_object(config, "heaters")
     pheaters.add_sensor_factory("mtx", MTXSensor)
-    # pheaters.add_sensor_factory("mtx", DummySensor)
 
     return MetexonToolboard(config, board_name)
