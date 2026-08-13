@@ -232,7 +232,7 @@ interpolate:
 # Type: boolean
 
 diag0_pin:
-# DIAG0 pin for stall detection or sensorless homing. Use pin alias 'mtxCAN:PIN_TMC_DIAG0'. The `^!` prefix enables pull-up and inverts the pin.
+# DIAG0 pin for stall detection. Use pin alias 'mtxCAN:PIN_TMC_DIAG0'. The `^!` prefix enables pull-up and inverts the pin.
 # Type: string
 ```  
 

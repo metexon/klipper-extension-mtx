@@ -1,10 +1,9 @@
-# klipper-extension-mtx
 
 Klipper extension for Metexon CAN toolboards.
 
-## Installation
+# Installation
 
-### One-line install
+## One-line install
 
 This downloads the installer, clones the repository to `~/klipper-extension-mtx`, links the extension files into `~/klipper/klippy/extras`, links the firmware files into `~/printer_data` when that folder exists, and restarts the `klipper` service:
 
@@ -12,7 +11,7 @@ This downloads the installer, clones the repository to `~/klipper-extension-mtx`
 wget -qO- https://raw.githubusercontent.com/metexon/klipper-extension-mtx/main/install.sh | bash
 ```
 
-### Install from an existing checkout
+## Install from an existing checkout
 
 If you already cloned this repository locally:
 
@@ -58,7 +57,13 @@ git pull
 ./install.sh
 ```
 
-## Firmware Updates
+# Documentation
+
+See [`DOCUMENTATION.md`](DOCUMENTATION.md) for the documentation.
+
+See [`example_printer.cfg`](example_printer.cfg) for an example of how to use it in your Klipper configuration.
+
+# Firmware Updates
 
 The installed extension picks up the firmware files from `~/printer_data`.
 
@@ -66,9 +71,6 @@ If the firmware file on disk is newer, Klipper will show a notification in the c
 
 Note: This is the internal control firmware, not the Klipper firmware that also runs on the toolboard.
 
-## Klipper configuration
-
-See [`example_printer.cfg`](example_printer.cfg) for an example of how to use it in your Klipper configuration.
 
 ## Firmware Changes:
 
