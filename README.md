@@ -72,11 +72,31 @@ If the firmware file on disk is newer, Klipper will show a notification in the c
 Note: This is the internal control firmware, not the Klipper firmware that also runs on the toolboard.
 
 
-## Firmware Changes:
+# Firmware Changes:
 
-### Firmware 1.6
+## Firmware 2.0
 
-New: readout of motor temperature sensor (on the outer surface of the stepper motor)
+### New: readout of supply voltage
+
+* Reported as macro property `supply_voltage` in volts
+* Requires MTX firmware 2.0 or later; earlier firmware versions report `0.0`
+* Example macro access:
+```
+{% set mtx = printer["mtx6"] %}
+{action_respond_info("Supply Voltage: %.1f V" % mtx.supply_voltage)}
+```
+
+### New: Support for hardware revision 3.0
+
+Temperature measurement routines were modified to make use of improved circuitry in hardware revision 3.0. Compatibility for older hardware revisions is maintained.
+
+### Changed: Internal Firmware Architecture
+
+Several internal firmware components were rewritten to improve stability and maintainability.
+
+## Firmware 1.6
+
+### New: readout of motor temperature sensor (on the outer surface of the stepper motor)
 
 * Reported on mtx temperature sensor channel "motor"
 * Example config:
@@ -86,5 +106,4 @@ sensor_type: mtx                 # use mtx temperature sensor type
 mtx_board: mtx6                  # toolboard ID
 mtx_sensor_channel: motor        # motor -> temperature at extruder motor
 ```
-
 

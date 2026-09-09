@@ -359,6 +359,7 @@ Available Properties:
 - `temperature_body` - Extruder body temperature in °C
 - `temperature_esp32` - ESP32 MCU temperature in °C
 - `temperature_motor` - Stepper motor temperature in °C
+- `supply_voltage` - 48 V input voltage in V. Requires MTX firmware 2.0 or later; earlier firmware reports `0.0`.
 - `fan_speed` - Part cooling fan speed (0.0-1.0)
 - `fan_rpm` - Part cooling fan RPM
 - `fan_body_speed` - Body cooling fan speed (0.0-1.0)
@@ -380,6 +381,7 @@ gcode:
         "Body Temperature: %.1f C\n"
         "Motor Temperature: %.1f C\n"
         "ESP32 Temperature: %.1f C\n"
+        "Supply Voltage: %.1f V\n"
         "Fan Speed: %.0f %%\n"
         "Fan RPM: %.0f RPM\n"
         "Body Fan Speed: %.0f %%\n"
@@ -394,6 +396,7 @@ gcode:
             mtx.temperature_body,
             mtx.temperature_motor,
             mtx.temperature_esp32,
+            mtx.supply_voltage,
             mtx.fan_speed * 100,
             mtx.fan_rpm,
             mtx.fan_body_speed * 100,
@@ -455,4 +458,3 @@ pin: mtxCAN:PIN_GPIO_EXT3
 
 - All GPIO pins are directly connected to the RP2040 and provide 3.3V logic level
 - Ensure that any connected devices are compatible with the RP2040 voltage levels. Please refer to the RP2040 datasheet for detailed specifications.
-

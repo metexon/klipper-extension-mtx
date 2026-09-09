@@ -50,7 +50,7 @@ MTX_REGISTER_MIN = 0x00                 # minimum valid register ID
 MTX_REGISTER_ID = 0x00                  # read-only, MTX CAN ID id
 MTX_REGISTER_FIRMWARE_VERSION = 0x01    # read-only, firmware version
 MTX_REGISTER_LED_STATUS = 0x02          # read-only, current RGBLEDState as numeric enum value
-MTX_REGISTER_RESERVED_03 = 0x03         # reserved for future use
+MTX_REGISTER_INPUT_VOLTAGE = 0x03       # read-only, 48 V input voltage in mV; 0 before firmware 2.0
 MTX_REGISTER_TEMP1 = 0x04               # read-only, temperature 1 in 0.01°C
 MTX_REGISTER_TEMP1_SETPOINT = 0x05      # read-write, temperature 1 setpoint in 0.01°C
 MTX_REGISTER_TEMP1_PWM = 0x06           # read-only in PID mode; read-write in MANUAL mode, 0-255
@@ -143,6 +143,7 @@ class MetexonToolboard:
         self.temperature_body = 0.
         self.temperature_esp32 = 0.
         self.temperature_motor = 0.
+        self.supply_voltage = 0.
         self.fan_speed = 0.
         self.fan_rpm = 0.
         self.fan_body_speed = 0.
@@ -235,6 +236,7 @@ class MetexonToolboard:
             self.temperature_body = registers[MTX_REGISTER_TEMP_BODY] / 100.0
             self.temperature_esp32 = registers[MTX_REGISTER_TEMP_ESP32] / 100.0
             self.temperature_motor = registers[MTX_REGISTER_TEMP_MOTOR] / 100.0
+            self.supply_voltage = registers[MTX_REGISTER_INPUT_VOLTAGE] / 1000.0
             self.fan_body_speed = registers[MTX_REGISTER_FAN1_PWM] / 255.0
             self.fan_body_rpm = registers[MTX_REGISTER_FAN1_RPM]
             self.fan_speed = registers[MTX_REGISTER_FAN2_PWM] / 255.0
@@ -251,9 +253,10 @@ class MetexonToolboard:
 
             mtxlog("T1 = %5.1f/%5.1f (pwm=%0.2f), "
                    "T2 = %5.1f/%5.1f (pwm=%0.2f), "
-                   "Fan_body=%0.2f (rpm=%d), Fan=%0.2f (rpm=%d)",
+                   "Supply=%0.2f V, Fan_body=%0.2f (rpm=%d), Fan=%0.2f (rpm=%d)",
                    self.temperature1, self.setpoint_temperature1, self.pwm1,
                    self.temperature2, self.setpoint_temperature2, self.pwm2,
+                   self.supply_voltage,
                    self.fan_body_speed, self.fan_body_rpm, self.fan_speed, self.fan_rpm)
         except Exception as e:
             logging.exception("mtx: exception encountered" +
@@ -474,6 +477,7 @@ class MetexonToolboard:
             'fan_rpm': self.fan_rpm,
             'fan_body_speed': self.fan_body_speed,
             'fan_body_rpm': self.fan_body_rpm,
+            'supply_voltage': self.supply_voltage,
         }
 
 
@@ -1306,9 +1310,8 @@ def load_config_prefix(config):
     board_name = config.get_name().split()[-1]
     return on_load(config, config.get('mtx_board', board_name))
 
+
 # when module is loaded but no param was set in printer.cfg
-
-
 def load_config(config):
     return on_load(config, "default")
 
