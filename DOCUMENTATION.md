@@ -333,7 +333,7 @@ Notes:
 
 - This updates the internal control firmware on the toolboard, not the Klipper firmware.
 - Firmware binary file must be present at the path specified by `firmware_update_file` (default: `~/printer_data/mtx_esp32_firmware.bin`). Corresponding metadata JSON file must be also present (e.g., `~/printer_data/mtx_esp32_firmware.json`). These files are typically put by the extension installer from the GitHub repository.
-- Only do fimware updates when no print is running
+- Only do fimware updates when no print is running and the extruder is cold.
 
 
 ---

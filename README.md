@@ -74,7 +74,7 @@ Note: This is the internal control firmware, not the Klipper firmware that also 
 
 # Firmware Changes:
 
-## Firmware 2.0
+## Firmware 2.1
 
 ### New: readout of supply voltage
 
@@ -90,9 +90,12 @@ Note: This is the internal control firmware, not the Klipper firmware that also 
 
 Temperature measurement routines were modified to make use of improved circuitry in hardware revision 3.0. Compatibility for older hardware revisions is maintained.
 
-### Changed: Internal Firmware Architecture
+### Other Changes
 
-Several internal firmware components were rewritten to improve stability and maintainability.
+* **Internal Firmware Architecture**: Several internal firmware components were rewritten to improve stability and maintainability.
+* **Heater PWM Frequency**: Increased the PWM frequency to eliminate audible noise during heating.
+* **Temperature Measurement**: Increased the temperature measurement frequency to 2 Hz for more accurate readings.
+
 
 ## Firmware 1.6
 
