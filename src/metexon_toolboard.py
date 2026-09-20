@@ -180,11 +180,11 @@ class MetexonToolboard:
 
         # Register G-Code command
         self.gcode = self.printer.lookup_object('gcode')
-        self.gcode.register_command(
-            'MTX_SEND_CMD', self.cmd_MTX_SEND_CMD,
+        self.gcode.register_mux_command(
+            'MTX_SEND_CMD', "MTX_BOARD", self.board_name, self.cmd_MTX_SEND_CMD,
             desc=self.cmd_MTX_SEND_CMD_help)
-        self.gcode.register_command(
-            'MTX_FIRMWARE_UPDATE', self.cmd_MTX_FIRMWARE_UPDATE,
+        self.gcode.register_mux_command(
+            'MTX_FIRMWARE_UPDATE', "MTX_BOARD", self.board_name, self.cmd_MTX_FIRMWARE_UPDATE,
             desc=self.cmd_MTX_FIRMWARE_UPDATE_help)
 
     def _get_MCU_I2C(self, mcu_name):
