@@ -121,6 +121,8 @@ class MetexonToolboard:
         self.reactor = self.printer.get_reactor()
 
         self.board_name = board_name
+        self.has_multiple_toolboards = len(
+            config.get_prefix_sections('metexon_toolboard')) > 1
         mtxlog("MetexonToolboard board name: %s" % self.board_name)
         self.sample_interval = config.getfloat('sample_time', 1, minval=.5)
         self.sample_interval_streaming = config.getfloat('sample_time_streaming', .010, minval=.005)
@@ -186,6 +188,13 @@ class MetexonToolboard:
         self.gcode.register_mux_command(
             'MTX_FIRMWARE_UPDATE', "MTX_BOARD", self.board_name, self.cmd_MTX_FIRMWARE_UPDATE,
             desc=self.cmd_MTX_FIRMWARE_UPDATE_help)
+        if not self.has_multiple_toolboards:
+            self.gcode.register_mux_command(
+                'MTX_SEND_CMD', "MTX_BOARD", None,
+                self.cmd_MTX_SEND_CMD)
+            self.gcode.register_mux_command(
+                'MTX_FIRMWARE_UPDATE', "MTX_BOARD", None,
+                self.cmd_MTX_FIRMWARE_UPDATE)
 
     def _get_MCU_I2C(self, mcu_name):
         try:
@@ -213,7 +222,7 @@ class MetexonToolboard:
 
 
 
-    def _make_measurement(self):
+    def _make_measurement(self, eventtime):
         try:
             registers_raw = self._get_registers_bulk(MTX_REGISTER_BULK_COUNT)
 
@@ -251,9 +260,12 @@ class MetexonToolboard:
             self.is_ready = True
             self.i2c_get_bulk_error_count = 0
 
-            mtxlog("T1 = %5.1f/%5.1f (pwm=%0.2f), "
+            mtxlog("%.1f: %s"
+                   "T1 = %5.1f/%5.1f (pwm=%0.2f), "
                    "T2 = %5.1f/%5.1f (pwm=%0.2f), "
                    "Supply=%0.2f V, Fan_body=%0.2f (rpm=%d), Fan=%0.2f (rpm=%d)",
+                   eventtime,
+                   '' if self.board_name == 'default' else (self.board_name + ' '),
                    self.temperature1, self.setpoint_temperature1, self.pwm1,
                    self.temperature2, self.setpoint_temperature2, self.pwm2,
                    self.supply_voltage,
@@ -271,7 +283,7 @@ class MetexonToolboard:
         elif self._stream_sampler.is_streaming():
             return self._stream_sampler.sample_stream(eventtime)
         else:
-            result = self._make_measurement()
+            result = self._make_measurement(eventtime)
             if not result:
                 self.i2c_get_bulk_error_count += 1
                 mtxlog("error reading MTX registers, count = %d" % self.i2c_get_bulk_error_count)
@@ -332,8 +344,13 @@ class MetexonToolboard:
             mtxlog("init, got id:0x%02X, firmware version: %d.%d" % (hardware_id, firmware_version >> 8, firmware_version & 0xFF))
             if hardware_id == MTX_HARDWARE_ID:
                 self._queue_startup_console_message(
-                    "Connected to Metexon toolboard, firmware version: %d.%d"
-                    % (firmware_version >> 8, firmware_version & 0xFF))
+                    "Connected to Metexon toolboard%s, firmware version: %d.%d"
+                    % (
+                        '' if self.board_name == 'default' else (' ' + self.board_name),
+                        firmware_version >> 8,
+                        firmware_version & 0xFF
+                    )
+                )
                 self._check_available_firmware_update_on_first_connect(firmware_version)
                 return True
             else:
@@ -362,12 +379,17 @@ class MetexonToolboard:
         if available_version_tuple <= device_version_tuple:
             return
 
+        update_command = "MTX_FIRMWARE_UPDATE"
+        if self.has_multiple_toolboards:
+            update_command += " MTX_BOARD=%s" % (self.board_name,)
         self._queue_startup_console_message(
             "MTX board '%s': firmware update available (file=%s, firmware_version=%s). "
-            "Run 'MTX_FIRMWARE_UPDATE' to start firmware update. Make sure no print is running."
+            "Run '%s' to start firmware update. "
+            "Make sure no print is running."
             % (self.board_name,
                update_info["filename"],
-               update_info["firmware_version"]))
+               update_info["firmware_version"],
+               update_command))
 
     def _calculate_checksum(self, data):
         checksum = 0
