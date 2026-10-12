@@ -284,7 +284,7 @@ The `[metexon_fan]` section replaces the standard fan control. In Mainsail/Fluid
 
 ### Firmware Update Notifications
 
-When a newer firmware version is detected in `~/printer_data/`, Klipper displays a console message at startup with instructions to run `MTX_FIRMWARE_UPDATE`. This message appears in the Mainsail/Fluidd console.
+When a newer firmware version is detected in `~/printer_data/`, Klipper displays a console message at startup with instructions to run `MTX_FIRMWARE_UPDATE`. If multiple toolboards are configured, the message includes the required `MTX_BOARD=<board_id>` selector. This message appears in the Mainsail/Fluidd console.
 
 ---
 
@@ -317,7 +317,13 @@ These commands work identically to standard Klipper fan control.
 Initiate a firmware update for the Metexon toolboard's internal control firmware.
 
 ```
-MTX_FIRMWARE_UPDATE [MODE=<mode>]
+MTX_FIRMWARE_UPDATE [MTX_BOARD=<board_id>] [MODE=<mode>]
+
+MTX_BOARD:
+# Toolboard ID from the `[metexon_toolboard <board_id>]` section.
+# Type: string
+# Required: Only when multiple Metexon toolboards are configured
+# Example: mtx6
 
 MODE:
 # Update mode.
@@ -331,6 +337,7 @@ MODE:
 
 Notes:
 
+- `MTX_BOARD` may be omitted when only one Metexon toolboard is configured; the command automatically targets that board.
 - This updates the internal control firmware on the toolboard, not the Klipper firmware.
 - Firmware binary file must be present at the path specified by `firmware_update_file` (default: `~/printer_data/mtx_esp32_firmware.bin`). Corresponding metadata JSON file must be also present (e.g., `~/printer_data/mtx_esp32_firmware.json`). These files are typically put by the extension installer from the GitHub repository.
 - Only do fimware updates when no print is running

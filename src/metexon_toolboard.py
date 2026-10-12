@@ -263,11 +263,15 @@ class MetexonToolboard:
             mtxlog("%.1f: %s"
                    "T1 = %5.1f/%5.1f (pwm=%0.2f), "
                    "T2 = %5.1f/%5.1f (pwm=%0.2f), "
+                   "TBody = %5.1f, "
+                   "TMotor = %5.1f, "
                    "Supply=%0.2f V, Fan_body=%0.2f (rpm=%d), Fan=%0.2f (rpm=%d)",
                    eventtime,
                    '' if self.board_name == 'default' else (self.board_name + ' '),
                    self.temperature1, self.setpoint_temperature1, self.pwm1,
                    self.temperature2, self.setpoint_temperature2, self.pwm2,
+                   self.temperature_body,
+                   self.temperature_motor,
                    self.supply_voltage,
                    self.fan_body_speed, self.fan_body_rpm, self.fan_speed, self.fan_rpm)
         except Exception as e:
