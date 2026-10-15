@@ -72,6 +72,19 @@ MTX_REGISTER_TEMP2_MODE = 0x15          # read-write, Heater 2 mode (0=PID, 1=MA
 MTX_REGISTER_MAX = 0x15                 # maximum valid register ID
 MTX_REGISTER_BULK_COUNT = MTX_REGISTER_FAN3_RPM + 1
 
+# Qualified capacitive probe firmware interface.  This register is outside
+# the normal telemetry register range and is intentionally accessed only via
+# set_cap_sensor_mode().
+MTX_REGISTER_CAP_SENSOR_MODE = 0x1C
+MTX_CAP_SENSOR_MODE_IDLE = 1
+MTX_CAP_SENSOR_MODE_FINE = 2
+MTX_CAP_SENSOR_MODE_ROUGH = 3
+MTX_CAP_SENSOR_MODE_OBSERVE = 4
+MTX_CAP_SENSOR_MODES = (MTX_CAP_SENSOR_MODE_IDLE,
+                        MTX_CAP_SENSOR_MODE_FINE,
+                        MTX_CAP_SENSOR_MODE_ROUGH,
+                        MTX_CAP_SENSOR_MODE_OBSERVE)
+
 MTX_HARDWARE_ID = 0x22
 
 MTX_DEBUG = True
@@ -451,6 +464,24 @@ class MetexonToolboard:
         except Exception as e:
             logging.exception("mtx: failed to set register: %s", str(e))
             return False
+
+    def set_cap_sensor_mode(self, mode):
+        if mode not in MTX_CAP_SENSOR_MODES:
+            raise self.printer.command_error(
+                "MTX board %s: invalid capacitive sensor mode %s" %
+                (self.board_name, mode))
+        if not self.init_sent:
+            raise self.printer.command_error(
+                "MTX board %s is not initialized for capacitive probing" %
+                self.board_name)
+        try:
+            self._send_i2c_command(MTX_CMD_SET_REGISTER,
+                                   MTX_REGISTER_CAP_SENSOR_MODE, mode)
+        except Exception as e:
+            raise self.printer.command_error(
+                "MTX board %s failed to set capacitive sensor mode %d: %s" %
+                (self.board_name, mode, str(e)))
+        mtxlog("board %s capacitive sensor mode=%d", self.board_name, mode)
 
     def _reset_device(self):
         try:
