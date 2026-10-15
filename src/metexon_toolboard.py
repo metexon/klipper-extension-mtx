@@ -76,6 +76,7 @@ MTX_REGISTER_BULK_COUNT = MTX_REGISTER_FAN3_RPM + 1
 # the normal telemetry register range and is intentionally accessed only via
 # set_cap_sensor_mode().
 MTX_REGISTER_CAP_SENSOR_MODE = 0x1C
+MTX_REGISTER_CAP_SENSOR_ERROR = 0x1D
 MTX_CAP_SENSOR_MODE_IDLE = 1
 MTX_CAP_SENSOR_MODE_FINE = 2
 MTX_CAP_SENSOR_MODE_ROUGH = 3
@@ -84,6 +85,15 @@ MTX_CAP_SENSOR_MODES = (MTX_CAP_SENSOR_MODE_IDLE,
                         MTX_CAP_SENSOR_MODE_FINE,
                         MTX_CAP_SENSOR_MODE_ROUGH,
                         MTX_CAP_SENSOR_MODE_OBSERVE)
+MTX_CAP_SENSOR_MIN_HEALTH_FIRMWARE = 0x0205
+MTX_CAP_SENSOR_ERROR_FLAGS = (
+    (0x0001, 'monitor initialization failed'),
+    (0x0002, 'no UART bytes received'),
+    (0x0004, 'UART bytes received but no valid four-channel frame'),
+    (0x0008, 'valid sensor frames became stale'),
+    (0x0010, 'three consecutive identical four-channel vectors'),
+    (0x0020, 'detector did not become ready'),
+)
 
 MTX_HARDWARE_ID = 0x22
 
@@ -165,6 +175,7 @@ class MetexonToolboard:
         self.fan_body_rpm = 0.
         self.init_sent = False
         self.is_ready = False
+        self.firmware_version = 0
 
         self.i2c_get_bulk_error_count = 0
         self.max_i2c_get_bulk_error_count = config.getint('max_i2c_get_bulk_errors', 3, minval=1)
@@ -360,6 +371,7 @@ class MetexonToolboard:
             firmware_version = register_vals[MTX_REGISTER_FIRMWARE_VERSION]
             mtxlog("init, got id:0x%02X, firmware version: %d.%d" % (hardware_id, firmware_version >> 8, firmware_version & 0xFF))
             if hardware_id == MTX_HARDWARE_ID:
+                self.firmware_version = firmware_version
                 self._queue_startup_console_message(
                     "Connected to Metexon toolboard%s, firmware version: %d.%d"
                     % (
@@ -474,6 +486,7 @@ class MetexonToolboard:
             raise self.printer.command_error(
                 "MTX board %s is not initialized for capacitive probing" %
                 self.board_name)
+        self._require_cap_sensor_error_support()
         try:
             self._send_i2c_command(MTX_CMD_SET_REGISTER,
                                    MTX_REGISTER_CAP_SENSOR_MODE, mode)
@@ -482,6 +495,37 @@ class MetexonToolboard:
                 "MTX board %s failed to set capacitive sensor mode %d: %s" %
                 (self.board_name, mode, str(e)))
         mtxlog("board %s capacitive sensor mode=%d", self.board_name, mode)
+
+    def _require_cap_sensor_error_support(self):
+        if self.firmware_version < MTX_CAP_SENSOR_MIN_HEALTH_FIRMWARE:
+            raise self.printer.command_error(
+                "MTX board %s firmware %d.%d does not support safe "
+                "capacitive probing; firmware 2.5 or newer is required" %
+                (self.board_name, self.firmware_version >> 8,
+                 self.firmware_version & 0xFF))
+
+    def get_cap_sensor_error(self):
+        if not self.init_sent:
+            raise self.printer.command_error(
+                "MTX board %s is not initialized for capacitive probing" %
+                self.board_name)
+        self._require_cap_sensor_error_support()
+        try:
+            return self._send_i2c_command(
+                MTX_CMD_GET_REGISTER, MTX_REGISTER_CAP_SENSOR_ERROR)
+        except Exception as e:
+            raise self.printer.command_error(
+                "MTX board %s failed to read capacitive sensor errors: %s" %
+                (self.board_name, str(e)))
+
+    @staticmethod
+    def decode_cap_sensor_error(value):
+        names = [name for bit, name in MTX_CAP_SENSOR_ERROR_FLAGS
+                 if value & bit]
+        reserved = value & 0xFFC0
+        if reserved:
+            names.append('reserved sensor error bits 0x%04X' % reserved)
+        return names or ['none']
 
     def _reset_device(self):
         try:
