@@ -85,7 +85,7 @@ MTX_CAP_SENSOR_MODES = (MTX_CAP_SENSOR_MODE_IDLE,
                         MTX_CAP_SENSOR_MODE_FINE,
                         MTX_CAP_SENSOR_MODE_ROUGH,
                         MTX_CAP_SENSOR_MODE_OBSERVE)
-MTX_CAP_SENSOR_MIN_HEALTH_FIRMWARE = 0x0205
+MTX_CAP_SENSOR_MIN_HEALTH_FIRMWARE = 0x0300
 MTX_CAP_SENSOR_ERROR_FLAGS = (
     (0x0001, 'monitor initialization failed'),
     (0x0002, 'no UART bytes received'),
@@ -500,7 +500,7 @@ class MetexonToolboard:
         if self.firmware_version < MTX_CAP_SENSOR_MIN_HEALTH_FIRMWARE:
             raise self.printer.command_error(
                 "MTX board %s firmware %d.%d does not support safe "
-                "capacitive probing; firmware 2.5 or newer is required" %
+                "capacitive probing; firmware 3.0 or newer is required" %
                 (self.board_name, self.firmware_version >> 8,
                  self.firmware_version & 0xFF))
 
