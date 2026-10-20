@@ -187,6 +187,9 @@ class MetexonToolboard:
         self._startup_console_message_delay = config.getfloat(
             'startup_console_message_delay', 1.0, minval=0.0)
         self._stream_sampler = MtxStreamSampler(self)
+        # Result of the most recent MTX_SEND_CMD.  Keep this available via
+        # get_status() so it can be inspected from Klipper macros.
+        self.last_send_cmd_response = None
 
         self.mcu = self.i2c.get_mcu()
 
@@ -541,8 +544,18 @@ class MetexonToolboard:
         cmd = gcmd.get_int('CMD')
         reg = gcmd.get_int('REG')
         data = gcmd.get_int('DATA', 0)
-        self._send_i2c_command(cmd, reg, data)
-        mtxlog(f"[mtx] Sent cmd:{cmd} reg:{reg} data:{data}")
+        response = self._send_i2c_command(cmd, reg, data)
+        self.last_send_cmd_response = response
+        if response is None:
+            gcmd.respond_info(
+                "MTX command was not sent: toolboard is not initialized yet")
+            return
+        message = (
+            "MTX command response: cmd=0x%02X reg=0x%02X "
+            "data=0x%04X response=0x%04X (%d)" %
+            (cmd, reg, data, response, response))
+        gcmd.respond_info(message)
+        mtxlog("[mtx] %s" % message)
 
     cmd_MTX_FIRMWARE_UPDATE_help = (
         "Start Metexon toolboard internal firmware update.")
@@ -579,6 +592,7 @@ class MetexonToolboard:
             'fan_body_speed': self.fan_body_speed,
             'fan_body_rpm': self.fan_body_rpm,
             'supply_voltage': self.supply_voltage,
+            'last_send_cmd_response': self.last_send_cmd_response,
         }
 
 
