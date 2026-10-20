@@ -77,6 +77,7 @@ MTX_REGISTER_BULK_COUNT = MTX_REGISTER_FAN3_RPM + 1
 # set_cap_sensor_mode().
 MTX_REGISTER_CAP_SENSOR_MODE = 0x1C
 MTX_REGISTER_CAP_SENSOR_ERROR = 0x1D
+MTX_REGISTER_CAP_SENSOR_CALIBRATION_STATUS = 0x1E
 MTX_CAP_SENSOR_MODE_IDLE = 1
 MTX_CAP_SENSOR_MODE_FINE = 2
 MTX_CAP_SENSOR_MODE_ROUGH = 3
@@ -93,7 +94,22 @@ MTX_CAP_SENSOR_ERROR_FLAGS = (
     (0x0008, 'valid sensor frames became stale'),
     (0x0010, 'three consecutive identical four-channel vectors'),
     (0x0020, 'detector did not become ready'),
+    (0x0040, 'position signal amplitude is invalid'),
 )
+MTX_CAP_SENSOR_CALIBRATION_VALID = 0x0100
+MTX_CAP_SENSOR_CALIBRATION_STATES = {
+    0x0000: 'missing',
+    0x0001: 'running',
+    0x0002: 'success',
+    0x0003: 'failure',
+}
+MTX_CAP_SENSOR_CALIBRATION_FAILURES = {
+    0x1000: 'busy',
+    0x2000: 'timeout',
+    0x3000: 'unstable samples',
+    0x4000: 'sensor monitor start failed',
+    0x5000: 'persistence failed',
+}
 
 MTX_HARDWARE_ID = 0x22
 
@@ -490,6 +506,8 @@ class MetexonToolboard:
                 "MTX board %s is not initialized for capacitive probing" %
                 self.board_name)
         self._require_cap_sensor_error_support()
+        if mode in (MTX_CAP_SENSOR_MODE_FINE, MTX_CAP_SENSOR_MODE_ROUGH):
+            self.require_cap_sensor_calibration()
         try:
             self._send_i2c_command(MTX_CMD_SET_REGISTER,
                                    MTX_REGISTER_CAP_SENSOR_MODE, mode)
@@ -521,14 +539,61 @@ class MetexonToolboard:
                 "MTX board %s failed to read capacitive sensor errors: %s" %
                 (self.board_name, str(e)))
 
+    def get_cap_sensor_calibration_status(self):
+        if not self.init_sent:
+            raise self.printer.command_error(
+                "MTX board %s is not initialized for capacitive probing" %
+                self.board_name)
+        self._require_cap_sensor_error_support()
+        try:
+            return self._send_i2c_command(
+                MTX_CMD_GET_REGISTER,
+                MTX_REGISTER_CAP_SENSOR_CALIBRATION_STATUS)
+        except Exception as e:
+            raise self.printer.command_error(
+                "MTX board %s failed to read capacitive sensor calibration "
+                "status: %s" % (self.board_name, str(e)))
+
+    def require_cap_sensor_calibration(self):
+        status = self.get_cap_sensor_calibration_status()
+        if not status & MTX_CAP_SENSOR_CALIBRATION_VALID:
+            raise self.printer.command_error(
+                "MTX board %s capacitive sensor calibration is required "
+                "before probing: status=0x%04X (%s); run "
+                "CALIBRATE_MTX_CAP_SENSOR BOARD=%s with the sensor in free "
+                "air" % (self.board_name, status,
+                          ', '.join(self.decode_cap_sensor_calibration_status(
+                              status)), self.board_name))
+        return status
+
     @staticmethod
     def decode_cap_sensor_error(value):
         names = [name for bit, name in MTX_CAP_SENSOR_ERROR_FLAGS
                  if value & bit]
-        reserved = value & 0xFFC0
+        reserved = value & 0xFF80
         if reserved:
             names.append('reserved sensor error bits 0x%04X' % reserved)
         return names or ['none']
+
+    @staticmethod
+    def decode_cap_sensor_calibration_status(value):
+        state = value & 0x0003
+        names = [MTX_CAP_SENSOR_CALIBRATION_STATES.get(
+            state, 'unknown state 0x%X' % state)]
+        if value & MTX_CAP_SENSOR_CALIBRATION_VALID:
+            names.append('valid stored offsets')
+        else:
+            names.append('no valid stored offsets')
+        reason = value & 0xF000
+        if reason:
+            names.append(MTX_CAP_SENSOR_CALIBRATION_FAILURES.get(
+                reason, 'unknown failure 0x%04X' % reason))
+        known_mask = 0xF103
+        reserved = value & ~known_mask
+        if reserved:
+            names.append('reserved calibration status bits 0x%04X' %
+                         reserved)
+        return names
 
     def _reset_device(self):
         try:
