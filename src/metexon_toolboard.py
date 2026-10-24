@@ -72,45 +72,6 @@ MTX_REGISTER_TEMP2_MODE = 0x15          # read-write, Heater 2 mode (0=PID, 1=MA
 MTX_REGISTER_MAX = 0x15                 # maximum valid register ID
 MTX_REGISTER_BULK_COUNT = MTX_REGISTER_FAN3_RPM + 1
 
-# Qualified capacitive probe firmware interface.  This register is outside
-# the normal telemetry register range and is intentionally accessed only via
-# set_cap_sensor_mode().
-MTX_REGISTER_CAP_SENSOR_MODE = 0x1C
-MTX_REGISTER_CAP_SENSOR_ERROR = 0x1D
-MTX_REGISTER_CAP_SENSOR_CALIBRATION_STATUS = 0x1E
-MTX_CAP_SENSOR_MODE_IDLE = 1
-MTX_CAP_SENSOR_MODE_FINE = 2
-MTX_CAP_SENSOR_MODE_ROUGH = 3
-MTX_CAP_SENSOR_MODE_OBSERVE = 4
-MTX_CAP_SENSOR_MODES = (MTX_CAP_SENSOR_MODE_IDLE,
-                        MTX_CAP_SENSOR_MODE_FINE,
-                        MTX_CAP_SENSOR_MODE_ROUGH,
-                        MTX_CAP_SENSOR_MODE_OBSERVE)
-MTX_CAP_SENSOR_MIN_HEALTH_FIRMWARE = 0x0300
-MTX_CAP_SENSOR_ERROR_FLAGS = (
-    (0x0001, 'monitor initialization failed'),
-    (0x0002, 'no UART bytes received'),
-    (0x0004, 'UART bytes received but no valid four-channel frame'),
-    (0x0008, 'valid sensor frames became stale'),
-    (0x0010, 'three consecutive identical four-channel vectors'),
-    (0x0020, 'detector did not become ready'),
-    (0x0040, 'position signal amplitude is invalid'),
-)
-MTX_CAP_SENSOR_CALIBRATION_VALID = 0x0100
-MTX_CAP_SENSOR_CALIBRATION_STATES = {
-    0x0000: 'missing',
-    0x0001: 'running',
-    0x0002: 'success',
-    0x0003: 'failure',
-}
-MTX_CAP_SENSOR_CALIBRATION_FAILURES = {
-    0x1000: 'busy',
-    0x2000: 'timeout',
-    0x3000: 'unstable samples',
-    0x4000: 'sensor monitor start failed',
-    0x5000: 'persistence failed',
-}
-
 MTX_HARDWARE_ID = 0x22
 
 MTX_DEBUG = True
@@ -242,7 +203,7 @@ class MetexonToolboard:
     def _get_MCU_I2C(self, mcu_name):
         try:
             i2c_mcu = mcu.get_printer_mcu(self.printer, mcu_name)
-        except:
+        except Exception:
             raise Exception("metexon_toolboard: no mcu named '%s' found" % mcu_name)
 
         ppins = self.printer.lookup_object("pins")
@@ -496,104 +457,12 @@ class MetexonToolboard:
             logging.exception("mtx: failed to set register: %s", str(e))
             return False
 
-    def set_cap_sensor_mode(self, mode):
-        if mode not in MTX_CAP_SENSOR_MODES:
-            raise self.printer.command_error(
-                "MTX board %s: invalid capacitive sensor mode %s" %
-                (self.board_name, mode))
-        if not self.init_sent:
-            raise self.printer.command_error(
-                "MTX board %s is not initialized for capacitive probing" %
-                self.board_name)
-        self._require_cap_sensor_error_support()
-        if mode in (MTX_CAP_SENSOR_MODE_FINE, MTX_CAP_SENSOR_MODE_ROUGH):
-            self.require_cap_sensor_calibration()
-        try:
-            self._send_i2c_command(MTX_CMD_SET_REGISTER,
-                                   MTX_REGISTER_CAP_SENSOR_MODE, mode)
-        except Exception as e:
-            raise self.printer.command_error(
-                "MTX board %s failed to set capacitive sensor mode %d: %s" %
-                (self.board_name, mode, str(e)))
-        mtxlog("board %s capacitive sensor mode=%d", self.board_name, mode)
-
-    def _require_cap_sensor_error_support(self):
-        if self.firmware_version < MTX_CAP_SENSOR_MIN_HEALTH_FIRMWARE:
-            raise self.printer.command_error(
-                "MTX board %s firmware %d.%d does not support safe "
-                "capacitive probing; firmware 3.0 or newer is required" %
-                (self.board_name, self.firmware_version >> 8,
-                 self.firmware_version & 0xFF))
-
-    def get_cap_sensor_error(self):
-        if not self.init_sent:
-            raise self.printer.command_error(
-                "MTX board %s is not initialized for capacitive probing" %
-                self.board_name)
-        self._require_cap_sensor_error_support()
-        try:
-            return self._send_i2c_command(
-                MTX_CMD_GET_REGISTER, MTX_REGISTER_CAP_SENSOR_ERROR)
-        except Exception as e:
-            raise self.printer.command_error(
-                "MTX board %s failed to read capacitive sensor errors: %s" %
-                (self.board_name, str(e)))
-
-    def get_cap_sensor_calibration_status(self):
-        if not self.init_sent:
-            raise self.printer.command_error(
-                "MTX board %s is not initialized for capacitive probing" %
-                self.board_name)
-        self._require_cap_sensor_error_support()
-        try:
-            return self._send_i2c_command(
-                MTX_CMD_GET_REGISTER,
-                MTX_REGISTER_CAP_SENSOR_CALIBRATION_STATUS)
-        except Exception as e:
-            raise self.printer.command_error(
-                "MTX board %s failed to read capacitive sensor calibration "
-                "status: %s" % (self.board_name, str(e)))
-
-    def require_cap_sensor_calibration(self):
-        status = self.get_cap_sensor_calibration_status()
-        if not status & MTX_CAP_SENSOR_CALIBRATION_VALID:
-            raise self.printer.command_error(
-                "MTX board %s capacitive sensor calibration is required "
-                "before probing: status=0x%04X (%s); run "
-                "CALIBRATE_MTX_CAP_SENSOR BOARD=%s with the sensor in free "
-                "air" % (self.board_name, status,
-                          ', '.join(self.decode_cap_sensor_calibration_status(
-                              status)), self.board_name))
-        return status
-
-    @staticmethod
-    def decode_cap_sensor_error(value):
-        names = [name for bit, name in MTX_CAP_SENSOR_ERROR_FLAGS
-                 if value & bit]
-        reserved = value & 0xFF80
-        if reserved:
-            names.append('reserved sensor error bits 0x%04X' % reserved)
-        return names or ['none']
-
-    @staticmethod
-    def decode_cap_sensor_calibration_status(value):
-        state = value & 0x0003
-        names = [MTX_CAP_SENSOR_CALIBRATION_STATES.get(
-            state, 'unknown state 0x%X' % state)]
-        if value & MTX_CAP_SENSOR_CALIBRATION_VALID:
-            names.append('valid stored offsets')
-        else:
-            names.append('no valid stored offsets')
-        reason = value & 0xF000
-        if reason:
-            names.append(MTX_CAP_SENSOR_CALIBRATION_FAILURES.get(
-                reason, 'unknown failure 0x%04X' % reason))
-        known_mask = 0xF103
-        reserved = value & ~known_mask
-        if reserved:
-            names.append('reserved calibration status bits 0x%04X' %
-                         reserved)
-        return names
+    def send_command(self, cmd, param, data_uint16=0):
+        # Public raw command interface for extension modules that own
+        # toolboard-specific features (e.g. capacitive probing in
+        # mtx_tool).  Returns the 16-bit response value, or None when the
+        # board is not initialized yet.
+        return self._send_i2c_command(cmd, param, data_uint16)
 
     def _reset_device(self):
         try:
@@ -776,7 +645,7 @@ class MetexonToolboard:
                 return response
             except Exception as e:
                 mtxlog("i2c error attempt=%d/%d: %s", attempt + 1, max_repeats, str(e))
-                last_exception = e 
+                last_exception = e
                 if attempt >= max_repeats:
                     mtxlog("i2c error, no more retries, giving up")
                     raise
